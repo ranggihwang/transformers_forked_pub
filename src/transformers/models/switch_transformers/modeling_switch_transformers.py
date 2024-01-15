@@ -12,6 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+""" RH """
+import torch.cuda.nvtx as nvtx_cuda
+import nvtx
+import time
+
 """ PyTorch SwitchTransformers model."""
 
 
@@ -287,6 +292,8 @@ class SwitchTransformersSparseMLP(nn.Module):
         for idx in range(config.num_experts):
             self.experts[f"expert_{idx}"] = expert_class(config)
 
+    # RH: Perf measurement
+    @nvtx.annotate("SwitchTransformersSparseMLP", color="green")
     def forward(self, hidden_states):
         r"""
         Hold on, this will be slightly tricky to understand In the correct order, a MoE layer does the following:
@@ -307,9 +314,21 @@ class SwitchTransformersSparseMLP(nn.Module):
         # can be unchanged from one layer to another. That is why the hidden states are cloned before updating only the seleced ones.
 
         next_states = hidden_states.clone()
-        for idx, expert in enumerate(self.experts.values()):
-            token_indices = router_mask[:, :, idx].bool()
-            next_states[token_indices] = expert(hidden_states[token_indices]).to(next_states.dtype)
+
+        # RH: Newly added
+        router_mask = router_mask.bool()
+        idx_mask = router_mask.transpose(1,2)
+        idx_mask = torch.cat(torch.split(idx_mask, 1, dim=0), dim=2)
+        idx_mask = idx_mask.sum(dim=2)
+        idx_mask = idx_mask.squeeze()   # length: number of experts / value: number of tokens 
+
+        idx_mask = torch.nonzero(idx_mask, as_tuple=True)[0].tolist()   # length: number of "activated" expert / value: index
+        for idx in idx_mask:
+            next_states[router_mask[:, :, idx]] = (getattr(self.experts, "expert_{}".format(idx)) (hidden_states[router_mask[:, :, idx]])).to(next_states.dtype)
+                        
+        # for idx, expert in enumerate(self.experts.values()):
+        #     token_indices = router_mask[:, :, idx].bool()
+        #     next_states[token_indices] = expert(hidden_states[token_indices]).to(next_states.dtype)
 
         hidden_states = router_probs * next_states
         return hidden_states, (router_logits, expert_index)
@@ -463,6 +482,8 @@ class SwitchTransformersAttention(nn.Module):
         values = values.permute([2, 0, 1]).unsqueeze(0)  # shape (1, num_heads, query_length, key_length)
         return values
 
+    # RH: Perf measurement
+    @nvtx.annotate("SwitchTransformersAttention", color="blue")
     def forward(
         self,
         hidden_states,
@@ -603,6 +624,7 @@ class SwitchTransformersLayerSelfAttention(nn.Module):
         self.layer_norm = SwitchTransformersLayerNorm(config.d_model, eps=config.layer_norm_epsilon)
         self.dropout = nn.Dropout(config.dropout_rate)
 
+
     def forward(
         self,
         hidden_states,
@@ -679,6 +701,8 @@ class SwitchTransformersBlock(nn.Module):
 
         self.layer.append(SwitchTransformersLayerFF(config, is_sparse=self.is_sparse))
 
+    # RH: Perf measurement
+    @nvtx.annotate("SwitchTransformersBlock", color="yellow")
     def forward(
         self,
         hidden_states,
@@ -919,6 +943,8 @@ class SwitchTransformersStack(SwitchTransformersPreTrainedModel):
     def set_input_embeddings(self, new_embeddings):
         self.embed_tokens = new_embeddings
 
+    # RH: Perf measurement
+    @nvtx.annotate("SwitchTransformersStack", color="red")
     def forward(
         self,
         input_ids=None,
@@ -1518,6 +1544,7 @@ class SwitchTransformersForConditionalGeneration(SwitchTransformersPreTrainedMod
     def get_decoder(self):
         return self.decoder
 
+    @nvtx.annotate("SwitchTransformersForConditionalGeneration", color="blue")
     @add_start_docstrings_to_model_forward(SWITCH_TRANSFORMERS_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=Seq2SeqMoEOutput, config_class=_CONFIG_FOR_DOC)
     def forward(
