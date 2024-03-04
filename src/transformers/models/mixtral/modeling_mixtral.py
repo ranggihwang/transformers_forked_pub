@@ -674,6 +674,9 @@ class MixtralBLockSparseTop2MLP(nn.Module):
         self.act_fn = ACT2FN[config.hidden_act]
 
     def forward(self, hidden_states, routing_weights):
+        
+        # RH
+        # torch.save(hidden_states, 'tensor.pt')
         current_hidden_states = self.act_fn(self.w1(hidden_states)) * self.w3(hidden_states)
         current_hidden_states = self.w2(current_hidden_states)
         return routing_weights * current_hidden_states
