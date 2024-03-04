@@ -18,7 +18,11 @@
 # to defer the actual importing for when the objects are requested. This way `import transformers` provides the names
 # in the namespace without actually importing anything (and especially none of the backends).
 
+<<<<<<< HEAD
 __version__ = "4.38.2"
+=======
+__version__ = "4.36.2"
+>>>>>>> v4.36.2_mixtral
 
 from typing import TYPE_CHECKING
 

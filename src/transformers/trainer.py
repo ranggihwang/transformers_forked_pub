@@ -2530,6 +2530,7 @@ class Trainer:
         # Place checkpoint in final location after all saving is finished.
         # First wait for everyone to finish writing
         self.args.distributed_state.wait_for_everyone()
+<<<<<<< HEAD
 
         # Then go through the rewriting process, only renaming and rotating from main process(es)
         if self.is_local_process_zero() if self.args.save_on_each_node else self.is_world_process_zero():
@@ -2553,6 +2554,15 @@ class Trainer:
             # Clean up the remaining staging checkpoint folders on other nodes
             if staging_output_dir != output_dir and os.path.exists(staging_output_dir):
                 shutil.rmtree(staging_output_dir)
+=======
+        # Then go through the rewriting process starting on process 0
+        if staging_output_dir != output_dir:
+            with self.args.main_process_first(
+                desc="Renaming model checkpoint folder to true location", local=self.args.save_on_each_node
+            ):
+                if os.path.exists(staging_output_dir):
+                    os.rename(staging_output_dir, output_dir)
+>>>>>>> v4.36.2_mixtral
 
         self.args.distributed_state.wait_for_everyone()
 

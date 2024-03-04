@@ -49,7 +49,11 @@ Any model supported by the AutoModelForMaskedImageModeling API can be used.
 logger = logging.getLogger(__name__)
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
+<<<<<<< HEAD
 check_min_version("4.38.0")
+=======
+check_min_version("4.36.0")
+>>>>>>> v4.36.2_mixtral
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/image-pretraining/requirements.txt")
 

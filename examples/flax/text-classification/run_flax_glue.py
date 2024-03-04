@@ -55,7 +55,11 @@ from transformers.utils import check_min_version, send_example_telemetry
 
 logger = logging.getLogger(__name__)
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
+<<<<<<< HEAD
 check_min_version("4.38.0")
+=======
+check_min_version("4.36.0")
+>>>>>>> v4.36.2_mixtral
 
 Array = Any
 Dataset = datasets.arrow_dataset.Dataset

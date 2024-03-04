@@ -101,8 +101,14 @@ def load_balancing_loss_func(
         return 0
 
     if isinstance(gate_logits, tuple):
+<<<<<<< HEAD
         compute_device = gate_logits[0].device
         concatenated_gate_logits = torch.cat([layer_gate.to(compute_device) for layer_gate in gate_logits], dim=0)
+=======
+        # cat along the layers?
+        compute_device = gate_logits[0].device
+        gate_logits = torch.cat([gate.to(compute_device) for gate in gate_logits], dim=0)
+>>>>>>> v4.36.2_mixtral
 
     routing_weights = torch.nn.functional.softmax(concatenated_gate_logits, dim=-1)
 
@@ -799,7 +805,14 @@ class MixtralBlockSparseTop2MLP(nn.Module):
 
         self.act_fn = ACT2FN[config.hidden_act]
 
+<<<<<<< HEAD
     def forward(self, hidden_states):
+=======
+    def forward(self, hidden_states, routing_weights):
+        
+        # RH
+        # torch.save(hidden_states, 'tensor.pt')
+>>>>>>> v4.36.2_mixtral
         current_hidden_states = self.act_fn(self.w1(hidden_states)) * self.w3(hidden_states)
         current_hidden_states = self.w2(current_hidden_states)
         return current_hidden_states
