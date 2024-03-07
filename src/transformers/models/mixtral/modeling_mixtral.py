@@ -53,6 +53,10 @@ from ...utils import (
 from ...utils.import_utils import is_torch_fx_available
 from .configuration_mixtral import MixtralConfig
 
+# RH
+import torch.cuda.nvtx as nvtx_cuda
+import nvtx
+
 
 if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
@@ -799,9 +803,17 @@ class MixtralBlockSparseTop2MLP(nn.Module):
 
         self.act_fn = ACT2FN[config.hidden_act]
 
+    @nvtx.annotate("MixtralBlockSparseTop2MLP", color="blue")
     def forward(self, hidden_states):
+
+        nvtx_cuda.range_push("GPU->SSD")
+        torch.save(hidden_states, 'tensor.pt')
+        nvtx_cuda.range_pop()
+        
+        nvtx_cuda.range_push("Expert computation")
         current_hidden_states = self.act_fn(self.w1(hidden_states)) * self.w3(hidden_states)
         current_hidden_states = self.w2(current_hidden_states)
+        nvtx_cuda.range_pop()
         return current_hidden_states
 
 
@@ -837,6 +849,7 @@ class MixtralSparseMoeBlock(nn.Module):
 
         self.experts = nn.ModuleList([MixtralBlockSparseTop2MLP(config) for _ in range(self.num_experts)])
 
+    @nvtx.annotate("MixtralSparseMoeBlock", color="Green")
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         """ """
         batch_size, sequence_length, hidden_dim = hidden_states.shape
